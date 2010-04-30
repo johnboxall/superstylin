@@ -3,6 +3,8 @@
 
 Superstylin finds the stylesheets in your page and allows you to edit them in a popup window. Changes are instantly reflected in your site. Optionally, edited stylesheets can be saved via  POST request to an endpoint you configure.
 
+**[Demo](http://johnboxall.github.com/superstylin/)**
+
 ##Usage
 
     // Open the editor!
