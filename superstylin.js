@@ -5,23 +5,29 @@
   * Edit stylesheets from the comfort of your browser.
   *
   **/
-function superstylin(){
-    var undefined;
+function superstylin(){    
     var ss = window.ss || {};
-    var cache = {};
-    var ruri = /^(\w+:)?\/\/([^\/?#]+)/;
-    var $;
     
-    function join(obj, sep){
+    // If already open, noop.
+    if (ss.pop && !ss.pop.closed){
+        return;
+    }
+    
+    // Stash for content of stylesheets.
+    var cache = ss.cache = ss.hasOwnProperty("cache") && ss.cache || {};    
+    // RegExp used for detecting external uris.
+    var ruri = /^(\w+:)?\/\/([^\/?#]+)/;
+    var undefined;
+    var $;
+
+    function join(obj){
         var attrs = [];
-        var sep = sep || ",";
-        var key;
         
-        for (key in obj){
+        for (var key in obj){
             attrs.push(key + "=" + obj[key]);
         }
-        return attrs.join(sep);
-    };
+        return attrs.join(",");
+    }
     
     function getJS(src, win){
         var script = document.createElement('script');
@@ -73,12 +79,13 @@ function superstylin(){
         var $textarea = $self.next().show().children("textarea");
         var styleSheet;
         
-        // Only request a stylesheet once.
-        if (cache[uri]){
+        // Cache stylesheets so we only have to request them once.
+        if (cache.hasOwnProperty(uri)){
             return false;
         }
         cache[uri] = true;
         
+        // TODO: Handle inline stylesheets.
         // Find stylesheet node associated with this link.
         for (var i = 0; i < document.styleSheets.length; i++){
             var styleSheet = document.styleSheets[i];
@@ -87,28 +94,35 @@ function superstylin(){
             }
         }
         
+        // TODO: Problem with order of operations that results in flash of "undefined"
+        //       value in textarea.
+        
         // Remove the original stylesheet and insert a style element.
         getCSS(uri, function(response){
+            // TODO: Detect changing stylesheets is supported.
             var $style = $('<style type="text/css"></style>');
             $(styleSheet.ownerNode).replaceWith($style)
             $style.html(response);
             
             function update(){
-                $style.html(this.value); 
-            };
+                var val = this.value || "";
+                $style.html(val); 
+                cache[uri] = val;
+            }
             
             $textarea
                 .keyup(update)
                 .keydown(update)
                 .val(response);
+                
+            update.call($textarea[0]);
         });
         
         return false;
-    };
+    }
     
     // Build the interface in a popup window.
-    function init(){
-        var style = ss.style || "ul{margin:0;padding:0;list-style:none;}li{margin:1em 0.1em;padding:0.5em;border:1px solid #ddd;background:#f8f8ff;}textarea{clear:both;width:100%;height:90%;font-family: Monaco,'Courier New';}a{color:#4183C4;}div{position:relative;top:-20px;text-align:right;}a.close{color:#777;}.winning{background:black;}.winning.win{background:yellow;}.fail{background:red;}";
+    function init(){    
         var name = ss.popUpName || "superstylin";
         var opts = ss.popUpOpts || {
             width: screen.width * 0.33, 
@@ -116,12 +130,23 @@ function superstylin(){
             location: false
         };
         opts.screenX = screen.width - opts.width;
-        
-        var interface = ['<script type="text/javascript">var open=1;</script><style>'+ style + '</style><ul>'];
-        for (var i = 0; i < document.styleSheets.length; i++){
-            var href = document.styleSheets[i].href;     
-            if (href && (ss.ignore == undefined || ss.ignore(href))){
-                interface.push('<li> \
+
+        var pop = window.open("", name, join(opts));
+
+        // If we were open before, then load from cache.
+        if (ss.$docEl && ss.$docEl.length){
+            // TODO: How to do this jQuery?
+            //window.result = $(pop.document.documentElement).replaceWith(ss.$documentElement[0]);
+            var docEl = pop.document.documentElement;
+            docEl.parentNode.replaceChild(ss.$docEl[0], docEl);
+        } else {
+            // TODO: Make this pretty.
+            var style = ss.style || "ul{margin:0;padding:0;list-style:none;}li{margin:1em 0.1em;padding:0.5em;border:1px solid #ddd;background:#f8f8ff;}textarea{clear:both;width:100%;height:90%;font-family: Monaco,'Courier New';}a{color:#4183C4;}div{position:relative;top:-20px;text-align:right;}a.close{color:#777;}.winning{background:black;}.winning.win{background:yellow;}.fail{background:red;}";
+            var html = ['<script type="text/javascript">var open=1;</script><style>'+ style + '</style><ul>'];
+            for (var i = 0; i < document.styleSheets.length; i++){
+                var href = document.styleSheets[i].href;     
+                if (href && (ss.ignore == undefined || ss.ignore(href))){
+                    html.push('<li> \
     <a id="ss'+ i +'" class="open" href="#">' + href +'</a> \
     <div style="display:none;"> \
         <a class="close" href="#">Close</a> \
@@ -129,12 +154,12 @@ function superstylin(){
         <textarea name="' + (ss.name || href) + '"></textarea> \
     </div> \
 </li>');
+                }
             }
-        }
-        interface.push("</ul>");
-
-        var pop = window.open("", name, join(opts));
-        pop.document.write(interface.join(""));
+            html.push("</ul>");
+            pop.document.write(html.join(""));
+        }        
+        
         pop.document.close();
         pop.focus();
 
@@ -144,6 +169,24 @@ function superstylin(){
                 alert("Check your popup blocker settings.");
             }
         }, 1);
+
+        // Expose pop so we can see if it's already open.
+        ss.pop = pop;
+
+        // Populate open textareas for cache. Helps when we're reopening pop.
+        $("textarea", pop.document).each(function(){
+            this.value = cache[$(this).parent().prev("a").html()];
+        })
+
+        // Serialize pop state so we can resume where we left off.
+        pop.onbeforeunload = function(){
+            ss.$docEl = $(ss.pop.document.documentElement).clone(true);
+        }
+
+        // If we have been open before, don't rebind the rest of the handlers.
+        if (ss.$docEl && ss.$docEl.length){
+            return;
+        }
         
         var $openers = $("a.open", pop.document);
         
@@ -152,16 +195,19 @@ function superstylin(){
             open($openers.get(0));
         }
         
+        // Open a stylehsheet.
         $openers.click(function(){
             open(this);
             return false;
         });
         
+        // Close a stylesheet.
         $("a.close", pop.document).click(function(){
             $(this).parent().hide();
             return false;
         });
         
+        // Save a stylesheet.
         $("input", pop.document).click(function(){
             var $self = $(this);
             var textarea = $self.next()[0];
@@ -183,10 +229,13 @@ function superstylin(){
             $self.addClass("winning");            
         });
         
-        // Close the window when you go somewhere else.
+        // Close pop when you leave the page.
+        // TODO: Option to save automatically on close?
         window.onbeforeunload = function(){
-            pop.close();
+            //pop.close();
+            ss.pop.close();
         }
+        
 
     } // init()
     
