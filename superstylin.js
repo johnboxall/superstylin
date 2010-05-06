@@ -116,9 +116,7 @@ function superstylin(){
                 .val(response);
                 
             update.call($textarea[0]);
-        });
-        
-        return false;
+        });        
     }
     
     // Build the interface in a popup window.
@@ -130,9 +128,9 @@ function superstylin(){
             location: false
         };
         opts.screenX = screen.width - opts.width;
-
+        
         var pop = window.open("", name, join(opts));
-
+        
         // If we were open before, then load from cache.
         if (ss.$docEl && ss.$docEl.length){
             // TODO: How to do this jQuery?
@@ -141,7 +139,7 @@ function superstylin(){
             docEl.parentNode.replaceChild(ss.$docEl[0], docEl);
         } else {
             // TODO: Make this pretty.
-            var style = ss.style || "ul{margin:0;padding:0;list-style:none;}li{margin:1em 0.1em;padding:0.5em;border:1px solid #ddd;background:#f8f8ff;}textarea{clear:both;width:100%;height:90%;font-family: Monaco,'Courier New';}a{color:#4183C4;}div{position:relative;top:-20px;text-align:right;}a.close{color:#777;}.winning{background:black;}.winning.win{background:yellow;}.fail{background:red;}";
+            var style = ss.style || "ul{margin:0;padding:0;list-style:none;}li{margin:1em 0.1em;padding:0.5em;border:1px solid #ddd;background:#f8f8ff;}textarea{clear:both;width:100%;height:90%;font-family: Monaco,'Courier New';font-size:10px;}a{color:#4183C4;}div{position:relative;top:-20px;text-align:right;}a.close{color:#777;}.winning{background:black;}.winning.win{background:yellow;}.fail{background:red;}";
             var html = ['<script type="text/javascript">var open=1;</script><style>'+ style + '</style><ul>'];
             for (var i = 0; i < document.styleSheets.length; i++){
                 var href = document.styleSheets[i].href;     
@@ -158,31 +156,31 @@ function superstylin(){
             }
             html.push("</ul>");
             pop.document.write(html.join(""));
-        }        
+        }
         
         pop.document.close();
         pop.focus();
-
+        
         // http://stackoverflow.com/questions/668286/detect-blocked-popup-in-chrome
         setTimeout(function(){
             if (!pop || pop.closed || typeof pop.closed == "undefined" || !pop.open || !pop.outerHeight){
                 alert("Check your popup blocker settings.");
             }
         }, 1);
-
+        
         // Expose pop so we can see if it's already open.
         ss.pop = pop;
-
+        
         // Populate open textareas for cache. Helps when we're reopening pop.
         $("textarea", pop.document).each(function(){
             this.value = cache[$(this).parent().prev("a").html()];
         })
-
+        
         // Serialize pop state so we can resume where we left off.
         pop.onbeforeunload = function(){
             ss.$docEl = $(ss.pop.document.documentElement).clone(true);
         }
-
+        
         // If we have been open before, don't rebind the rest of the handlers.
         if (ss.$docEl && ss.$docEl.length){
             return;
@@ -213,7 +211,7 @@ function superstylin(){
             var textarea = $self.next()[0];
             var data = {};
             data[ss.name || textarea.name] = textarea.value;
-
+            
             $.ajax({type: "POST", url: ss.saveTo, data: data,
                 success: function(){
                     $self.addClass("win");
