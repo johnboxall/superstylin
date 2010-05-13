@@ -99,14 +99,28 @@ function superstylin(){
         
         // Remove the original stylesheet and insert a style element.
         getCSS(uri, function(response){
-            // TODO: Detect changing stylesheets is supported.
-            var $style = $('<style type="text/css"></style>');
-            $(styleSheet.ownerNode).replaceWith($style)
-            $style.html(response);
+            // TODO: Detect which method of changing CSS is supported.
+            var _update;
             
+            // IE is happy to just change the original stylesheet.   
+            if ($.browser.msie) {
+                _update = function(s) {
+                    document.styleSheets[i].cssText = s;
+                }
+            // Other browsers are a bit more fussy.
+            } else {
+                _update = function(s) {
+                    var $style = $('<style type="text/css"></style>');
+                    $(styleSheet.ownerNode).replaceWith($style)
+                    $style.html(response);
+                }
+            }
+            
+            _update();
+                        
             function update(){
                 var val = this.value || "";
-                $style.html(val); 
+                _update(val);
                 cache[uri] = val;
             }
             
@@ -123,13 +137,16 @@ function superstylin(){
     function init(){    
         var name = ss.popUpName || "superstylin";
         var opts = ss.popUpOpts || {
-            width: screen.width * 0.33, 
-            height: screen.height,
-            location: false
-        };
+                width: screen.width * 0.33, 
+                height: screen.height,
+                location: false
+            };
         opts.screenX = screen.width - opts.width;
         
         var pop = window.open("", name, join(opts));
+        // TODO: IE, if pop didn't open, pop.document might not be there?
+            
+        
         
         // If we were open before, then load from cache.
         if (ss.$docEl && ss.$docEl.length){
@@ -154,13 +171,14 @@ function superstylin(){
 </li>');
                 }
             }
-            html.push("</ul>");
+            html.push("</ul>");            
             pop.document.write(html.join(""));
         }
         
         pop.document.close();
         pop.focus();
         
+        // TODO: This throws in IE even if things worked.
         // http://stackoverflow.com/questions/668286/detect-blocked-popup-in-chrome
         setTimeout(function(){
             if (!pop || pop.closed || typeof pop.closed == "undefined" || !pop.open || !pop.outerHeight){
@@ -234,7 +252,6 @@ function superstylin(){
             ss.pop.close();
         }
         
-
     } // init()
     
     if (typeof jQuery == 'undefined'){
