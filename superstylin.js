@@ -86,7 +86,7 @@ function superstylin(){
         cache[uri] = true;
         
         // TODO: Handle inline stylesheets.
-        // Find stylesheet node associated with this link.
+        // Find find the stylesheet node we wanted to edit.
         for (var i = 0; i < document.styleSheets.length; i++){
             var styleSheet = document.styleSheets[i];
             if (styleSheet.href && styleSheet.href == uri){
@@ -109,9 +109,10 @@ function superstylin(){
                 }
             // Other browsers are a bit more fussy.
             } else {
+                var $style = $('<style type="text/css"></style>');
+                $(styleSheet.ownerNode).replaceWith($style)
+                
                 _update = function(s) {
-                    var $style = $('<style type="text/css"></style>');
-                    $(styleSheet.ownerNode).replaceWith($style)
                     $style.html(response);
                 }
             }
