@@ -15,8 +15,8 @@ function superstylin(){
     
     // Stash for content of stylesheets.
     var cache = ss.cache = ss.hasOwnProperty("cache") && ss.cache || {};    
-    // RegExp used for detecting external uris.
-    var ruri = /^(\w+:)?\/\/([^\/?#]+)/;
+    // RegExp used for detecting external urls.
+    var rurl = /^(\w+:)?\/\/([^\/?#]+)/;
     var undefined;
     var $;
 
@@ -46,13 +46,21 @@ function superstylin(){
         head.appendChild(script);
     }
     
-    function getCSS(uri, win, fail){
-        var m = ruri.exec(uri);
-        var remote = m && (m[1] && m[1] !== location.protocol || m[2] !== location.host);
-        
+    function getCSS(url, win, fail){
+        var m = rurl.exec(url);
+        // Try changing to current protocol when host is the same.
+        var remote = false;
+        if (m[1] && m[1] !== location.protocol) {
+            if (m[2] !== location.host) {
+                remote = true;
+            } else {
+                url = location.protocol + url.slice(url.indexOf(":") + 1)
+            }
+        }
+                
         // Use YQL for cross-domain requests.
         if (remote){
-            var q = 'select * from html where url="' + uri + '"';
+            var q = 'select * from html where url="' + url + '"';
             var src = 'http://query.yahooapis.com/v1/public/yql?q=' + q + '&callback=_yql';
             
             // Massage response into expected format.
@@ -67,7 +75,7 @@ function superstylin(){
             };
             getJS(src);
         } else{
-            $.get(uri, win);
+            $.get(url, win);
         }
     }
     
@@ -75,21 +83,21 @@ function superstylin(){
     function open(link){
         var self = link;
         var $self = $(link);
-        var uri = link.innerHTML;
+        var url = link.innerHTML;
         var $textarea = $self.next().show().children("textarea");
         var styleSheet;
         
         // Cache stylesheets so we only have to request them once.
-        if (cache.hasOwnProperty(uri)){
+        if (cache.hasOwnProperty(url)){
             return false;
         }
-        cache[uri] = true;
+        cache[url] = true;
         
         // TODO: Handle inline stylesheets.
         // Find find the stylesheet node we wanted to edit.
         for (var i = 0; i < document.styleSheets.length; i++){
             var styleSheet = document.styleSheets[i];
-            if (styleSheet.href && styleSheet.href == uri){
+            if (styleSheet.href && styleSheet.href == url){
                 break;
             }
         }
@@ -98,8 +106,8 @@ function superstylin(){
         //       value in textarea.
         
         // Remove the original stylesheet and insert a style element.
-        getCSS(uri, function(response){
-            // TODO: Detect which method of changing CSS is supported.
+        getCSS(url, function(response){
+            // TODO: Feature detect which method of changing CSS is supported.
             var _update;
             
             // IE is happy to just change the original stylesheet.   
@@ -122,7 +130,7 @@ function superstylin(){
             function update(){
                 var val = this.value || "";
                 _update(val);
-                cache[uri] = val;
+                cache[url] = val;
             }
             
             $textarea
@@ -249,7 +257,6 @@ function superstylin(){
         // Close pop when you leave the page.
         // TODO: Option to save automatically on close?
         window.onbeforeunload = function(){
-            //pop.close();
             ss.pop.close();
         }
         
