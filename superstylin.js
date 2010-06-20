@@ -5,7 +5,7 @@
   * Edit stylesheets from the comfort of your browser.
   *
   **/
-function superstylin(){    
+function superstylin() {    
     var ss = window.ss || {};
     
     // If already open, noop.
@@ -20,22 +20,22 @@ function superstylin(){
     var undefined;
     var $;
 
-    function join(obj){
+    function join(obj) {
         var attrs = [];
         
-        for (var key in obj){
+        for (var key in obj) {
             attrs.push(key + "=" + obj[key]);
         }
         return attrs.join(",");
     }
     
-    function getJS(src, win){
+    function getJS(src, win) {
         var script = document.createElement('script');
         var head = document.getElementsByTagName('head')[0];
         var done = false;
         
         script.src = src;
-        script.onload = function(){
+        script.onload = function() {
             if (!done){
                 done = true;
                 if (win){
@@ -58,46 +58,47 @@ function superstylin(){
             }
         }
                 
+        // TODO: YQL Sucks. Just need a straight proxy.
         // Use YQL for cross-domain requests.
-        if (remote){
+        if (remote) {
             var q = 'select * from html where url="' + url + '"';
             var src = 'http://query.yahooapis.com/v1/public/yql?q=' + q + '&callback=_yql';
             
             // Massage response into expected format.
-            window._yql = function(r){
-                if (!r.results.length){
+            window._yql = function(r) {
+                if (!r.results.length) {
                     alert(r.query.diagnostics.forbidden);
-                } else{
+                } else {
                     // Response wrapped in <body><p>(.*?)</p></body>
                     var css = r.results[0].substr(14, r.results[0].length - 28);
                     win(css);
                 }                   
             };
             getJS(src);
-        } else{
+        } else {
             $.get(url, win);
         }
     }
     
     // Load a stylesheet and make it editable.
-    function open(link){
+    function open(link) {
         var self = link;
-        var $self = $(link);
         var url = link.innerHTML;
+        var $self = $(link);
         var $textarea = $self.next().show().children("textarea");
         var styleSheet;
         
-        // Cache stylesheets so we only have to request them once.
-        if (cache.hasOwnProperty(url)){
+        // Cache stylesheets so we only request them once.
+        if (cache.hasOwnProperty(url)) {
             return false;
         }
         cache[url] = true;
         
         // TODO: Handle inline stylesheets.
         // Find find the stylesheet node we wanted to edit.
-        for (var i = 0; i < document.styleSheets.length; i++){
+        for (var i = 0; i < document.styleSheets.length; i++) {
             var styleSheet = document.styleSheets[i];
-            if (styleSheet.href && styleSheet.href == url){
+            if (styleSheet.href && styleSheet.href == url) {
                 break;
             }
         }
@@ -105,29 +106,34 @@ function superstylin(){
         // TODO: Problem with order of operations that results in flash of "undefined"
         //       value in textarea.
         
-        // Remove the original stylesheet and insert a style element.
-        getCSS(url, function(response){
-            // TODO: Feature detect which method of changing CSS is supported.
+        // Get the CSS then bind keyup/keydown to update it.
+        getCSS(url, function(response) {
             var _update;
-            
-            // IE is happy to just change the original stylesheet.   
-            if ($.browser.msie) {
+                        
+            // IE is happy to change the styleSheet element.
+            if (document.styleSheets[i].cssText) {
                 _update = function(s) {
                     document.styleSheets[i].cssText = s;
                 }
-            // Other browsers are a bit more fussy.
+            // For others, remove the styleSheet and edit a style element.
             } else {
-                var $style = $('<style type="text/css"></style>');
-                $(styleSheet.ownerNode).replaceWith($style)
+                var css = document.createElement("style");
+                css.type = "text/css";
+                styleSheet.ownerNode.parentNode.replaceChild(css, styleSheet.ownerNode);
                 
                 _update = function(s) {
-                    $style.html(response);
+                    var node = document.createTextNode(s)
+                    if (css.childNodes.length > 0) {
+                        if (css.firstChild.nodeValue !== node.nodeValue) {
+                            css.replaceChild(node, css.firstChild);
+                        }
+                    } else {
+                        css.appendChild(node);
+                    }
                 }
             }
-            
-            _update();
                         
-            function update(){
+            function update() {
                 var val = this.value || "";
                 _update(val);
                 cache[url] = val;
@@ -143,7 +149,7 @@ function superstylin(){
     }
     
     // Build the interface in a popup window.
-    function init(){    
+    function init() {    
         var name = ss.popUpName || "superstylin";
         var opts = ss.popUpOpts || {
                 width: screen.width * 0.33, 
@@ -154,11 +160,9 @@ function superstylin(){
         
         var pop = window.open("", name, join(opts));
         // TODO: IE, if pop didn't open, pop.document might not be there?
-            
-        
         
         // If we were open before, then load from cache.
-        if (ss.$docEl && ss.$docEl.length){
+        if (ss.$docEl && ss.$docEl.length) {
             // TODO: How to do this jQuery?
             //window.result = $(pop.document.documentElement).replaceWith(ss.$documentElement[0]);
             var docEl = pop.document.documentElement;
@@ -169,7 +173,7 @@ function superstylin(){
             var html = ['<script type="text/javascript">var open=1;</script><style>'+ style + '</style><ul>'];
             for (var i = 0; i < document.styleSheets.length; i++){
                 var href = document.styleSheets[i].href;     
-                if (href && (ss.ignore == undefined || ss.ignore(href))){
+                if (href && (ss.ignore == undefined || ss.ignore(href))) {
                     html.push('<li> \
     <a id="ss'+ i +'" class="open" href="#">' + href +'</a> \
     <div style="display:none;"> \
@@ -189,64 +193,63 @@ function superstylin(){
         
         // TODO: This throws in IE even if things worked.
         // http://stackoverflow.com/questions/668286/detect-blocked-popup-in-chrome
-        setTimeout(function(){
+        setTimeout(function() {
             if (!pop || pop.closed || typeof pop.closed == "undefined" || !pop.open || !pop.outerHeight){
                 alert("Check your popup blocker settings.");
             }
         }, 1);
         
-        // Expose pop so we can see if it's already open.
+        // Expose pop so we can test if it's open.
         ss.pop = pop;
         
         // Populate open textareas for cache. Helps when we're reopening pop.
-        $("textarea", pop.document).each(function(){
-            this.value = cache[$(this).parent().prev("a").html()];
+        $("textarea", pop.document).each(function() {
+            var url = $(this).parent().prev("a").html();
+            this.value = cache[url];
         })
         
         // Serialize pop state so we can resume where we left off.
-        pop.onbeforeunload = function(){
+        pop.onbeforeunload = function() {
             ss.$docEl = $(ss.pop.document.documentElement).clone(true);
         }
         
         // If we have been open before, don't rebind the rest of the handlers.
-        if (ss.$docEl && ss.$docEl.length){
+        if (ss.$docEl && ss.$docEl.length) {
             return;
         }
         
         var $openers = $("a.open", pop.document);
         
         // If there is only one stylesheet, automatically open it.
-        if ($openers.length == 1){
+        if ($openers.length == 1) {
             open($openers.get(0));
         }
         
-        // Open a stylehsheet.
-        $openers.click(function(){
+        $openers.click(function() {
             open(this);
             return false;
         });
         
-        // Close a stylesheet.
-        $("a.close", pop.document).click(function(){
+        $("a.close", pop.document).click(function() {
             $(this).parent().hide();
             return false;
         });
         
-        // Save a stylesheet.
-        $("input", pop.document).click(function(){
+        // Savinge stylesheets.
+        $("input", pop.document).click(function() {
             var $self = $(this);
             var textarea = $self.next()[0];
             var data = {};
             data[ss.name || textarea.name] = textarea.value;
             
             $.ajax({type: "POST", url: ss.saveTo, data: data,
-                success: function(){
+                success: function() {
                     $self.addClass("win");
                     setTimeout(function(){
                         $self.removeClass("winning").removeClass("win");
                     }, 1000);
                 },
-                error: function(x){            
+                error: function(x) {            
                     $self.addClass("fail");
                     alert("Couldn't save your CSS. " + x.statusText);
                 }
@@ -256,14 +259,14 @@ function superstylin(){
         
         // Close pop when you leave the page.
         // TODO: Option to save automatically on close?
-        window.onbeforeunload = function(){
+        window.onbeforeunload = function() {
             ss.pop.close();
         }
         
     } // init()
     
-    if (typeof jQuery == 'undefined'){
-        getJS('http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js', function(){
+    if (typeof jQuery == 'undefined') {
+        getJS('http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js', function() {
             $ = jQuery.noConflict();
             init();
         });
