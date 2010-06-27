@@ -14,7 +14,9 @@ function superstylin() {
     }
     
     // Stash for content of stylesheets.
-    var cache = ss.cache = ss.hasOwnProperty("cache") && ss.cache || {};    
+    var cache = ss.cache = ss.hasOwnProperty("cache") && ss.cache || {};
+    // Warn if there are unsaved changes.
+    var dirty = false;
     // RegExp used for detecting external urls.
     var rurl = /^(\w+:)?\/\/([^\/?#]+)/;
     var undefined;
@@ -57,7 +59,7 @@ function superstylin() {
                 url = location.protocol + url.slice(url.indexOf(":") + 1)
             }
         }
-                
+                        
         // TODO: YQL Sucks. Just need a straight proxy.
         // Use YQL for cross-domain requests.
         if (remote) {
@@ -76,7 +78,11 @@ function superstylin() {
             };
             getJS(src);
         } else {
-            $.get(url, win);
+            $.ajax({
+                url: url,
+                cache: false,
+                complete: win
+            });
         }
     }
     
@@ -103,13 +109,12 @@ function superstylin() {
             }
         }
         
-        // TODO: Problem with order of operations that results in flash of "undefined"
-        //       value in textarea.
+        // TODO: Problem with order of operations causes "undefined to flash.
         
         // Get the CSS then bind keyup/keydown to update it.
-        getCSS(url, function(response) {
+        getCSS(url, function(xhr) {
             var _update;
-                        
+            
             // IE is happy to change the styleSheet element.
             if (document.styleSheets[i].cssText) {
                 _update = function(s) {
@@ -133,19 +138,26 @@ function superstylin() {
                 }
             }
                         
-            function update() {
+            function update(ignoreDirty) {
                 var val = this.value || "";
-                _update(val);
-                cache[url] = val;
+                if (val != cache[url]) {
+                    if (ignoreDirty !== true) {
+                        dirty = true;
+                    }
+                    _update(val);
+                    cache[url] = val;
+                }
             }
             
             $textarea
                 .keyup(update)
                 .keydown(update)
-                .val(response);
+                .val(xhr.responseText);
                 
-            update.call($textarea[0]);
-        });        
+            update.call($textarea[0], true);
+            
+        });      
+          
     }
     
     // Build the interface in a popup window.
@@ -242,14 +254,17 @@ function superstylin() {
             var data = {};
             data[ss.name || textarea.name] = textarea.value;
             
-            $.ajax({type: "POST", url: ss.saveTo, data: data,
+            $.ajax({
+                type: "POST", 
+                url: ss.saveTo, 
+                data: data,
                 success: function() {
+                    dirty = false;
                     $self.addClass("win");
                     setTimeout(function(){
                         $self.removeClass("winning").removeClass("win");
                     }, 1000);
-                },
-                error: function(x) {            
+                }, error: function(x) {            
                     $self.addClass("fail");
                     alert("Couldn't save your CSS. " + x.statusText);
                 }
@@ -259,8 +274,14 @@ function superstylin() {
         
         // Close pop when you leave the page.
         // TODO: Option to save automatically on close?
+        // TODO: Only warn about dirty once?
         window.onbeforeunload = function() {
-            ss.pop.close();
+            if (dirty) {
+                // dirty = false;
+                return 'You have unsaved CSS changes.';
+            } else {
+                ss.pop.close();
+            }
         }
         
     } // init()
