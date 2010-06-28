@@ -137,7 +137,7 @@ function superstylin() {
                     }
                 }
             }
-                        
+            
             function update(ignoreDirty) {
                 var val = this.value || "";
                 if (val != cache[url]) {
@@ -175,8 +175,6 @@ function superstylin() {
         
         // If we were open before, then load from cache.
         if (ss.$docEl && ss.$docEl.length) {
-            // TODO: How to do this jQuery?
-            //window.result = $(pop.document.documentElement).replaceWith(ss.$documentElement[0]);
             var docEl = pop.document.documentElement;
             docEl.parentNode.replaceChild(ss.$docEl[0], docEl);
         } else {
@@ -214,18 +212,18 @@ function superstylin() {
         // Expose pop so we can test if it's open.
         ss.pop = pop;
         
-        // Populate open textareas for cache. Helps when we're reopening pop.
+        // Populate open textareas from cache. Helps when we're reopening pop.
         $("textarea", pop.document).each(function() {
             var url = $(this).parent().prev("a").html();
             this.value = cache[url];
         })
         
-        // Serialize pop state so we can resume where we left off.
+        // Serialize pop state on close so we can resume where we left off.
         pop.onbeforeunload = function() {
             ss.$docEl = $(ss.pop.document.documentElement).clone(true);
         }
         
-        // If we have been open before, don't rebind the rest of the handlers.
+        // If we have been open before, no need to rebind handlers.
         if (ss.$docEl && ss.$docEl.length) {
             return;
         }
@@ -247,8 +245,33 @@ function superstylin() {
             return false;
         });
         
-        // Savinge stylesheets.
-        $("input", pop.document).click(function() {
+        // Saving stylesheets on click.
+        $save = $("input", pop.document);
+        $save.click(save);
+
+        // TODO: Doesn't make sense if you have multiple sheets.
+        // Saving stylesheets on ctrl+s.
+        $(pop.document).keydown(function(e) {
+            var character = String.fromCharCode(e.which).toLowerCase();
+            if (character == "s" && e.ctrlKey) {
+                save.call($save[0]);
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Close pop when you leave the page.
+        // TODO: Option to save automatically on close?
+        // TODO: Only warn about dirty once?
+        window.onbeforeunload = function() {
+            if (dirty) {
+                return 'You have unsaved CSS changes.';
+            } else {
+                ss.pop.close();
+            }
+        }
+        
+        function save() {
             var $self = $(this);
             var textarea = $self.next()[0];
             var data = {};
@@ -270,19 +293,7 @@ function superstylin() {
                 }
             });
             $self.addClass("winning");            
-        });
-        
-        // Close pop when you leave the page.
-        // TODO: Option to save automatically on close?
-        // TODO: Only warn about dirty once?
-        window.onbeforeunload = function() {
-            if (dirty) {
-                // dirty = false;
-                return 'You have unsaved CSS changes.';
-            } else {
-                ss.pop.close();
-            }
-        }
+        }        
         
     } // init()
     
