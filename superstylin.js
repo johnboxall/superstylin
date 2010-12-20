@@ -1,10 +1,10 @@
 this.superstylin = (function (window, document, undefined) {    
-    var popupLoaded = false,
+    var styleSheetsLoaded = false,
         // True if there are unsaved changes to Styles.
         dirty = false,
         // Used to check whether URLs are remote.
         rurl = /^(\w+:)?\/\/([^\/?#]+)(.*)/,
-        popup,
+        pop,
         $;
         
     function stylin() {
@@ -60,7 +60,7 @@ this.superstylin = (function (window, document, undefined) {
     };
     
     Style.prototype.load = function(onLoaded) {
-        var self = this;
+        var self = this;        
         self.fetch(function(xhr, statusText) {
             if (statusText == 'success') {
                 self.el = document.createElement('style');
@@ -119,57 +119,55 @@ this.superstylin = (function (window, document, undefined) {
         // You get to implement this.
         alert('Not Implemented!');
     };
-
-    function init() {
-        function load() {
-            buildPopup();
-            bindEvents();
-        }
+    
+    function init() {    
+        // Safari won't open popup after XHR calls, so we do it now.
+        var opts = {
+                width: parseInt(screen.width * 0.33),
+                height: screen.height,
+                screenY: 0
+            };
+        opts.screenX = screen.width - opts.width;
         
-        if (!popupLoaded) {
-            popupLoaded = true;
-                    
-            // Fetch the stylesheets and replace them with editable style elements.
-            // Then build the interface and bind the events!
-            var toLoad = 0;
+        pop = window.open('', 'stylin', join(opts));
+        
+        setTimeout(function() { 
+            if (!pop || pop.closed || typeof pop.closed === 'undefined' || !pop.open || !pop.outerHeight) {
+                alert('Check your pop-blocker settings.');
+            }
+        }, 0);
+        
+        if (!styleSheetsLoaded) {
+            styleSheetsLoaded = true;
             
-            $.each(document.styleSheets, function() {
+            var toLoad = 0;            
+            $.each(document.styleSheets, function() {            
                 var style = new Style(this);
                 if (style.shouldLoad()) {
                     toLoad++;
-    
+                    
                     // TODO: What if style fails to load?
                     style.load(function() {
                         toLoad--;
                         
                         if (toLoad == 0) {
-                            load();
+                            build();
                         }
                     });
                 }
             });
         } else {
-            load();
-        }
+           build();
+        }        
     }
     
-    function buildPopup() {
-        var opts = {
-                width: parseInt(screen.width * 0.33),
-                height: screen.height,
-                screenY: 0,
-            };
-        
-        opts.screenX = screen.width - opts.width;        
-        popup = window.open('', 'a', join(opts));
-        
+    function build() {
         var html = [
-                '<script type="text/javascript">var open = 1;</script>',
                 '<style type="text/css">',
                     '.styleSheet {}',
                     '.styleSheet div { float: right; }',
                     '.styleSheet.closed textarea { display: none; }',
-                    'textarea { width: 100%; height: 90%; font-family: Monaco, "Courier New"; font-size: 10px; padding: 10px; }',
+                    'textarea { width: 100%; height: 90%; font-family: Monaco; font-size: 10px; padding: 10px; }',
                     '.saving { background: red; }',
                 '</style>'
             ];
@@ -182,38 +180,31 @@ this.superstylin = (function (window, document, undefined) {
                         '<button>Toggle</button>',
                         '<input type="submit" value="Save" />',
                     '</div>',
-                '<textarea>' + style._data + '</textarea>',
+                    '<textarea>' + style._data + '</textarea>',
                 '</div>'
             );
         });
         
-        popup.document.write(html.join(''));
-        popup.document.close();
-        popup.focus();
+        pop.document.write(html.join(''));
+        pop.document.close();
+        pop.focus();
         
-        // http://stackoverflow.com/questions/668286/detect-blocked-popup-in-chrome
-        setTimeout(function() {
-            if (!popup || popup.closed || typeof popup.closed === 'undefined' || !popup.open || !popup.outerHeight) {
-                alert('Check your popup blocker settings.');
-            }
-        }, 1);
-    }
-    
-    function bindEvents() {      
-        $(popup.document).delegate('textarea', 'keyup keydown', function() {
-            var id = $(this).parents('.styleSheet').data('id');
+        $(pop.document).delegate('textarea', 'keyup keydown', function(e) {
+            // TODO: Get ID fails here:
+            // http://ssl.www.threadless.com.proxy.com/cart/step/shipping-info
+            var id = $(this).parents('.styleSheet').data('id') || 0;
             Style.styles[id].update(this.value || '', 250);
         });
         
-        $(popup.document).delegate('button', 'click', function() {
+        $(pop.document).delegate('button', 'click', function() {
             $(this).parents('.styleSheet').toggleClass('closed');
         });
         
         // Save Style.
-        $(popup.document).delegate('input[type="submit"]', 'click', function() {
+        $(pop.document).delegate('input[type="submit"]', 'click', function() {
             var saveEl = this,
-                id = $(this).parents('.styleSheet').data('id');
-
+                id = $(this).parents('.styleSheet').data('id') || 0;
+            
             Style.styles[id].save(function(xhr, textStatus) {
                 if (textStatus == 'success') {
                     dirty = false;
@@ -223,14 +214,14 @@ this.superstylin = (function (window, document, undefined) {
                 saveEl.className = '';
             });
             
-            saveEl.className = 'saving';            
+            saveEl.className = 'saving';          
         });
         
         // Save Styles with CTRL+S.
-        $(popup.document).keydown(function(e) {        
+        $(pop.document).keydown(function(e) {        
             var char = String.fromCharCode(e.which).toLowerCase();
             if (char == 's' && e.ctrlKey) {
-                $('input[type="submit"]', popup.document).click();
+                $('input[type="submit"]', pop.document).click();
                 e.preventDefault();
                 return false;
             }
@@ -238,7 +229,7 @@ this.superstylin = (function (window, document, undefined) {
         
         // If there is one Style, open it.
         if (Style.styles.length == 1) {
-            $('button', popup.document).click();
+            $('button', pop.document).click();
         }
         
         window.onbeforeunload = function() {
@@ -248,9 +239,8 @@ this.superstylin = (function (window, document, undefined) {
         };
             
         window.onunload = function() {
-            popup.close();
-        };
-        
+            pop.close();
+        };   
     }
     
     return stylin;
