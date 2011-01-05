@@ -1,5 +1,7 @@
 this.superstylin = (function (window, document, undefined) {    
-    var styleSheetsLoaded = false,
+    var 
+        // True if CSS has already been downloaded.
+        styleSheetsLoaded = false,
         // True if there are unsaved changes to Styles.
         dirty = false,
         // Used to check whether URLs are remote.
@@ -8,23 +10,19 @@ this.superstylin = (function (window, document, undefined) {
         $;
         
     function stylin() {
-        if (typeof jQuery === 'undefined') {
-            var script = document.createElement('script'),
-                scriptLoaded = false;
-            
-            script.src = 'http://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js';
-            script.onload = function() {
-                if (!scriptLoaded) {
-                    scriptLoaded = true;
-                    $ = jQuery.noConflict();
-                    init();
-                }
-            };
-            document.head.appendChild(script);
-        } else {
-            $ = jQuery;
-            init();
-        }
+        // Always load our version of jQuery - 1.4.1 has weird delegation???
+        var script = document.createElement('script'),
+            scriptLoaded = false;
+        
+        script.src = 'http://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js';
+        script.onload = function() {
+            if (!scriptLoaded) {
+                scriptLoaded = true;
+                $ = jQuery.noConflict();
+                init();
+            }
+        };
+        document.head.appendChild(script);
     };
     
     function join(o) {
@@ -120,8 +118,7 @@ this.superstylin = (function (window, document, undefined) {
         alert('Not Implemented!');
     };
     
-    function init() {    
-        // Safari won't open popup after XHR calls, so we do it now.
+    function init() {
         var opts = {
                 width: parseInt(screen.width * 0.33),
                 height: screen.height,
@@ -129,6 +126,7 @@ this.superstylin = (function (window, document, undefined) {
             };
         opts.screenX = screen.width - opts.width;
         
+        // Safari won't open popup after XHR calls, so we do it now.
         pop = window.open('', 'stylin', join(opts));
         
         setTimeout(function() { 
@@ -156,6 +154,23 @@ this.superstylin = (function (window, document, undefined) {
                     });
                 }
             });
+            
+            // TODO: What if we can't load any stylesheets? Just drop one of our own.
+            /*if (toLoad == 0) {
+                // build();
+                var style = document.createElement('style');
+                style.appendChild(document.createTextNode());
+                style.text = 'text/css';
+                document.head.appendChild(style);
+                
+                var s = new Style({})
+                s.el = style;
+                s._data = '';
+                
+                Style.styles.push(s);
+                build();
+            }*/
+            
         } else {
            build();
         }        
@@ -184,7 +199,7 @@ this.superstylin = (function (window, document, undefined) {
                 '</div>'
             );
         });
-        
+                
         pop.document.write(html.join(''));
         pop.document.close();
         pop.focus();
