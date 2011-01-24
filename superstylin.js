@@ -10,11 +10,13 @@ this.superstylin = (function (window, document, undefined) {
         rcssurl = /url\((.*)?\)/gi,
         // Used to spot data URLs.
         rdataurl = /^data:/i,
+        // Popup window.
         pop,
+        // jQuery.
         $;
     
     function stylin() {
-        // Always load our version of jQuery - 1.4.1 has weird delegation???
+        // Always load our version of jQuery.
         var 
             script = document.createElement('script'),
             scriptLoaded = false;
