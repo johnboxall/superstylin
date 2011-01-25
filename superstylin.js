@@ -83,24 +83,18 @@ this.superstylin = (function (window, document, undefined) {
         });
     };
     
+    // If data changed, render and set dirty state.
     Style.prototype.update = function(data, timeout) {
-        var 
+        var
             self = this,
-            dataIsNull = data === null;
+            isLoading = data === null;
         
-        if (dataIsNull) {
+        if (isLoading) {
             data = self._data;
         }
         
-        // Make embedded URLs relative to the style sheet URL since <style> elements
-        // are relative to the document.
-        data = data.replace(rcssurl, function($0, $1) {
-            return 'url(' + (rdataurl.test($1) ? $1 : urlResolve(self.url, $1)) + ')';
-        });
-        
-        // Update when we have new data.
         if (data != self.data) {
-            if (dataIsNull) {
+            if (!isLoading) {
                 dirty = true
             }
             
@@ -122,12 +116,18 @@ this.superstylin = (function (window, document, undefined) {
         onComplete(data);
     };
     
+    // Make embedded URLs relative to the style sheet URL since <style> elements
+    // are relative to the document.
     Style.prototype.render = function(css) {
+        var self = this;
+        css = css.replace(rcssurl, function($0, $1) {
+            return 'url(' + (rdataurl.test($1) ? $1 : urlResolve(self.url, $1)) + ')';
+        });
         this.el.replaceChild(document.createTextNode(css), this.el.firstChild);
     };
     
+    // You get to implement this!
     Style.prototype.save = function(onComplete) {
-        // You get to implement this.
         alert('Not Implemented!');
     };
     
@@ -167,23 +167,7 @@ this.superstylin = (function (window, document, undefined) {
                     });
                 }
             });
-            
-            // TODO: What if we can't load any stylesheets? Just drop one of our own.
-            /*if (toLoad == 0) {
-                // build();
-                var style = document.createElement('style');
-                style.appendChild(document.createTextNode());
-                style.text = 'text/css';
-                document.head.appendChild(style);
-                
-                var s = new Style({})
-                s.el = style;
-                s._data = '';
-                
-                Style.styles.push(s);
-                build();
-            }*/
-            
+                    
         } else {
            build();
         }        
@@ -271,6 +255,9 @@ this.superstylin = (function (window, document, undefined) {
         };   
     }
 
+// Possible solutions to enable tabs:
+// http://ajaxian.com/archives/handling-tabs-in-textareas
+// http://teddevito.com/demos/textarea.html
 
 // URL.js from NodeJS. Exports and requires removed.
 // https://github.com/ry/node/blob/master/lib/url.js
