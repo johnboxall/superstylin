@@ -25,7 +25,7 @@ this.superstylin = (function (window, document, undefined) {
         script.onload = function() {
             if (!scriptLoaded) {
                 scriptLoaded = true;
-                $ = jQuery.noConflict();
+                $ = jQuery.noConflict(true);
                 init();
             }
         };
